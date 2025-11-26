@@ -236,7 +236,13 @@ function AppLayout({ children }: AppLayoutProps) {
               />
             </Dropdown>
             <Badge count={0} size="small">
-              <BellOutlined style={{ fontSize: '18px' }} />
+              <BellOutlined 
+                style={{ 
+                  fontSize: '18px',
+                  ...(currentTheme === 'light' && { color: '#52c41a' }),
+                  ...(currentTheme === 'blue' && { color: '#1677ff' })
+                }} 
+              />
             </Badge>
             <Dropdown
               menu={{
