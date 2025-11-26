@@ -143,7 +143,7 @@ const Settings: React.FC = () => {
                       border: currentTheme === 'dark' ? '2px solid #1890ff' : '1px solid #d9d9d9'
                     }}
                   >
-                    <div style={{ background: '#141414', padding: '10px', borderRadius: '4px' }}>
+                    <div style={{ background: '#000000', padding: '10px', borderRadius: '4px' }}>
                       <div style={{ background: '#1890ff', color: 'white', padding: '4px 8px', borderRadius: '4px', display: 'inline-block' }}>
                         主要颜色
                       </div>

@@ -97,13 +97,22 @@ function AppLayout({ children }: AppLayoutProps) {
   const selectedKeys = [location.pathname]
 
   // 主题切换菜单项
+  const getThemeMenuIconColor = (theme: string) => {
+    if (currentTheme === 'light') {
+      return '#52c41a'
+    } else if (currentTheme === 'blue') {
+      return '#1677ff'
+    }
+    return undefined
+  }
+
   const themeMenuItems = [
     {
       key: 'light',
       label: (
         <Space>
-          <SunOutlined />
-          亮色模式
+          <SunOutlined style={{ color: getThemeMenuIconColor('light') }} />
+          <span style={{ color: getThemeMenuIconColor('light') }}>亮色模式</span>
         </Space>
       ),
       onClick: () => setTheme('light'),
@@ -112,8 +121,8 @@ function AppLayout({ children }: AppLayoutProps) {
       key: 'dark',
       label: (
         <Space>
-          <MoonOutlined />
-          暗黑模式
+          <MoonOutlined style={{ color: getThemeMenuIconColor('dark') }} />
+          <span style={{ color: getThemeMenuIconColor('dark') }}>暗黑模式</span>
         </Space>
       ),
       onClick: () => setTheme('dark'),
@@ -122,8 +131,8 @@ function AppLayout({ children }: AppLayoutProps) {
       key: 'blue',
       label: (
         <Space>
-          <BgColorsOutlined />
-          经典蓝
+          <BgColorsOutlined style={{ color: getThemeMenuIconColor('blue') }} />
+          <span style={{ color: getThemeMenuIconColor('blue') }}>经典蓝</span>
         </Space>
       ),
       onClick: () => setTheme('blue'),
@@ -139,12 +148,17 @@ function AppLayout({ children }: AppLayoutProps) {
         collapsed={collapsed}
         onCollapse={setCollapsed}
         style={{
-          background: '#fff',
           boxShadow: '2px 0 8px rgba(0,0,0,0.1)',
         }}
       >
         <div style={{ padding: '16px', textAlign: 'center' }}>
-          <Title level={4} style={{ margin: 0, color: '#1890ff' }}>
+          <Title 
+            level={4} 
+            style={{ 
+              margin: 0,
+              color: currentTheme === 'light' ? '#52c41a' : '#ffffff'
+            }}
+          >
             {collapsed ? 'FS' : 'Feed Service'}
           </Title>
         </div>
@@ -159,7 +173,6 @@ function AppLayout({ children }: AppLayoutProps) {
       <Layout>
         <Header
           style={{
-            background: '#fff',
             padding: '0 24px',
             display: 'flex',
             justifyContent: 'space-between',
@@ -171,7 +184,7 @@ function AppLayout({ children }: AppLayoutProps) {
           <Space size="middle">
             <Tooltip title={`当前主题: ${getThemeName(currentTheme)}`}>
               <Button
-                type="text"
+                type={currentTheme === 'light' || currentTheme === 'blue' ? 'default' : 'text'}
                 icon={<BulbOutlined />}
                 onClick={toggleTheme}
                 style={{
@@ -180,6 +193,16 @@ function AppLayout({ children }: AppLayoutProps) {
                   justifyContent: 'center',
                   width: '40px',
                   height: '40px',
+                  ...(currentTheme === 'light' && {
+                    borderColor: '#52c41a',
+                    color: '#52c41a',
+                    backgroundColor: '#f6ffed'
+                  }),
+                  ...(currentTheme === 'blue' && {
+                    borderColor: '#1677ff',
+                    color: '#1677ff',
+                    backgroundColor: '#f0f7ff'
+                  })
                 }}
               />
             </Tooltip>
@@ -191,7 +214,7 @@ function AppLayout({ children }: AppLayoutProps) {
               trigger={['click']}
             >
               <Button
-                type="text"
+                type={currentTheme === 'light' || currentTheme === 'blue' ? 'default' : 'text'}
                 icon={<BgColorsOutlined />}
                 style={{
                   display: 'flex',
@@ -199,11 +222,21 @@ function AppLayout({ children }: AppLayoutProps) {
                   justifyContent: 'center',
                   width: '40px',
                   height: '40px',
+                  ...(currentTheme === 'light' && {
+                    borderColor: '#52c41a',
+                    color: '#52c41a',
+                    backgroundColor: '#f6ffed'
+                  }),
+                  ...(currentTheme === 'blue' && {
+                    borderColor: '#1677ff',
+                    color: '#1677ff',
+                    backgroundColor: '#f0f7ff'
+                  })
                 }}
               />
             </Dropdown>
             <Badge count={0} size="small">
-              <BellOutlined style={{ fontSize: '18px', color: '#666' }} />
+              <BellOutlined style={{ fontSize: '18px' }} />
             </Badge>
             <Dropdown
               menu={{
@@ -223,7 +256,6 @@ function AppLayout({ children }: AppLayoutProps) {
           style={{
             margin: '24px',
             padding: '24px',
-            background: '#f0f2f5',
             minHeight: 280,
           }}
         >
