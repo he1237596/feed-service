@@ -1,0 +1,64 @@
+version: '3.8'
+
+services:
+  # Development version of Piral Feed Service
+  feed-service-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: piral-feed-service-dev
+    ports:
+      - "${PORT:-3000}:3000"
+      - "9229:9229"  # Debug port
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+      - DB_PATH=/app/data/feed-service.db
+      - STORAGE_PATH=/app/storage
+      - JWT_SECRET=dev-jwt-secret-key
+      - JWT_EXPIRES_IN=24h
+      - BCRYPT_ROUNDS=4  # Lower for development
+      - CORS_ORIGIN=http://localhost:3000
+      - RATE_LIMIT_WINDOW_MS=60000  # 1 minute for development
+      - RATE_LIMIT_MAX_REQUESTS=1000  # Higher limit for development
+      - LOG_LEVEL=debug
+      - LOG_FILE=/app/logs/app.log
+    volumes:
+      - .:/app:cached
+      - /app/node_modules
+      - dev-data:/app/data
+      - dev-storage:/app/storage
+      - dev-logs:/app/logs
+    networks:
+      - feed-network-dev
+    command: npm run dev
+
+  # SQLite browser for database inspection
+  sqlite-browser:
+    image: coleifer/sqlite-web:latest
+    container_name: piral-feed-sqlite-browser
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - SQLITE_DATABASE=/data/feed-service.db
+    volumes:
+      - dev-data:/data
+    depends_on:
+      - feed-service-dev
+    networks:
+      - feed-network-dev
+    profiles:
+      - tools
+
+volumes:
+  dev-data:
+    driver: local
+  dev-storage:
+    driver: local
+  dev-logs:
+    driver: local
+
+networks:
+  feed-network-dev:
+    driver: bridge

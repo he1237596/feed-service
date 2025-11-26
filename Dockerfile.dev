@@ -1,0 +1,46 @@
+FROM node:18-alpine
+
+# Install development tools
+RUN apk add --no-cache \
+    python3 \
+    make \
+    g++ \
+    sqlite \
+    git
+
+# Set working directory
+WORKDIR /app
+
+# Create app user
+RUN addgroup -g 1001 -S nodejs && adduser -S nodejs -u 1001
+
+# Copy package files
+COPY package*.json ./
+COPY tsconfig.json ./
+
+# Install dependencies
+RUN npm ci
+
+# Copy source code
+COPY --chown=nodejs:nodejs . .
+
+# Create required directories
+RUN mkdir -p /app/data /app/storage /app/logs \
+    && chown -R nodejs:nodejs /app
+
+# Switch to non-root user
+USER nodejs
+
+# Expose ports
+EXPOSE 3000 9229
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD node -e "require('http').get('http://localhost:3000/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"
+
+# Set environment variables
+ENV NODE_ENV=development
+ENV PORT=3000
+
+# Default command - can be overridden for different tasks
+CMD ["npm", "run", "dev"]
