@@ -12,9 +12,9 @@ export const userLoginSchema = Joi.object({
   password: Joi.string().required()
 });
 
-// Package validation schemas
+// Package validation schemas (npm-compatible)
 export const packageCreateSchema = Joi.object({
-  name: Joi.string().alphanum().min(1).max(50).required(),
+  name: Joi.string().pattern(/^[a-z0-9][a-z0-9._-]*[a-z0-9]$/i).min(1).max(50).required(),
   description: Joi.string().max(500).optional(),
   isPublic: Joi.boolean().default(true)
 });
@@ -52,16 +52,16 @@ export const paginationSchema = Joi.object({
 export const idSchema = Joi.string().uuid().required();
 
 // Package name validation schema
-export const packageNameSchema = Joi.string().alphanum().min(1).max(50).required();
+export const packageNameSchema = Joi.string().pattern(/^[a-z0-9][a-z0-9._-]*[a-z0-9]$/i).min(1).max(50).required();
 
 // Package param validation schema (for routes like /:packageName)
 export const packageParamSchema = Joi.object({
-  packageName: Joi.string().alphanum().min(1).max(50).required()
+  packageName: Joi.string().pattern(/^[a-z0-9][a-z0-9._-]*[a-z0-9]$/i).min(1).max(50).required()
 });
 
 // Package name param validation schema (for routes like /:name)
 export const packageNameParamSchema = Joi.object({
-  name: Joi.string().alphanum().min(1).max(50).required()
+  name: Joi.string().pattern(/^[a-z0-9][a-z0-9._-]*[a-z0-9]$/i).min(1).max(50).required()
 });
 
 // Version validation schema
@@ -69,7 +69,7 @@ export const versionSchema = Joi.string().pattern(/^\d+\.\d+\.\d+(-.+)?$/).requi
 
 // Package and version validation schema
 export const packageVersionSchema = Joi.object({
-  packageName: Joi.string().alphanum().min(1).max(50).required(),
+  packageName: Joi.string().pattern(/^[a-z0-9][a-z0-9._-]*[a-z0-9]$/i).min(1).max(50).required(),
   version: Joi.string().pattern(/^\d+\.\d+\.\d+(-.+)?$/).required()
 });
 

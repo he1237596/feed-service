@@ -30,9 +30,18 @@ export class Helpers {
     return semver.maxSatisfying(versions, '*') || versions[0];
   }
 
-  // Sanitize package name
+  // Sanitize package name (npm compatible)
   static sanitizePackageName(name: string): string {
-    return name.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+    // Follow npm naming conventions:
+    // - Allow lowercase letters, numbers, hyphens, underscores, and dots
+    // - Cannot start or end with special characters
+    // - No consecutive special characters
+    return name.toLowerCase()
+      .replace(/[^a-z0-9._-]/g, '') // Remove invalid chars
+      .replace(/^[^a-z0-9]+|[._-]+$/g, '') // Remove leading/trailing non-alphanumeric
+      .replace(/[._-]{2,}/g, '.') // Collapse multiple special chars
+      .replace(/^[._-]+/, '') // Ensure starts with alphanumeric
+      .replace(/[._-]+$/, ''); // Ensure ends with alphanumeric
   }
 
   // Ensure directory exists

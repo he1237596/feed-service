@@ -236,6 +236,27 @@ export class VersionModel {
     return versions.find(v => v.isLatest) || versions[0] || null;
   }
 
+  public async updateAllLatest(packageId: string, isLatest: boolean): Promise<void> {
+    await this.db.run(
+      'UPDATE versions SET is_latest = ?, updated_at = ? WHERE package_id = ?',
+      [isLatest ? 1 : 0, new Date().toISOString(), packageId]
+    );
+  }
+
+  public async updateLatest(versionId: string, isLatest: boolean): Promise<void> {
+    await this.db.run(
+      'UPDATE versions SET is_latest = ?, updated_at = ? WHERE id = ?',
+      [isLatest ? 1 : 0, new Date().toISOString(), versionId]
+    );
+  }
+
+  public async updateDeprecated(versionId: string, isDeprecated: boolean): Promise<void> {
+    await this.db.run(
+      'UPDATE versions SET is_deprecated = ?, updated_at = ? WHERE id = ?',
+      [isDeprecated ? 1 : 0, new Date().toISOString(), versionId]
+    );
+  }
+
   private async setNewLatestVersion(packageId: string): Promise<void> {
     const latestVersion = await this.db.get(
       'SELECT * FROM versions WHERE package_id = ? ORDER BY created_at DESC LIMIT 1',

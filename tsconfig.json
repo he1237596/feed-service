@@ -21,7 +21,15 @@
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
     "experimentalDecorators": true,
-    "emitDecoratorMetadata": true
+    "emitDecoratorMetadata": true,
+    "strict": false
+  },
+  "ts-node": {
+    "esm": false,
+    "compilerOptions": {
+      "strict": false,
+      "noImplicitAny": false
+    }
   },
   "include": [
     "src/**/*"

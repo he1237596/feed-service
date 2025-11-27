@@ -97,18 +97,45 @@ export class PackageModel {
   }
 
   public async findWithVersions(name: string): Promise<PackageWithVersions | null> {
-    const pkg = await this.findByName(name);
-    if (!pkg) return null;
+    try {
+      const pkg = await this.findByName(name);
+      if (!pkg) return null;
 
-    const versions = await this.versionModel.findByPackageId(pkg.id);
-    const downloadCount = await this.getDownloadCount(pkg.id);
+      logger.info(`Found package: ${pkg.name} with id: ${pkg.id}`);
 
-    return {
-      ...pkg,
-      versions,
-      downloads: downloadCount,
-      latestVersion: this.versionModel.getLatestVersion(versions)?.version
-    };
+      const versions = await this.versionModel.findByPackageId(pkg.id);
+      logger.info(`Found ${versions.length} versions for package: ${pkg.name}`);
+
+      let downloadCount = 0;
+      try {
+        downloadCount = await this.getDownloadCount(pkg.id);
+      } catch (error) {
+        logger.warn('Failed to get download count:', error);
+        downloadCount = 0;
+      }
+
+      const result = {
+        ...pkg,
+        versions,
+        downloads: downloadCount,
+        latestVersion: this.versionModel.getLatestVersion(versions)?.version
+      };
+      
+      logger.info(`Package with versions result for ${pkg.name}:`, {
+        versionCount: versions.length,
+        downloadCount,
+        latestVersion: result.latestVersion
+      });
+
+      return result;
+    } catch (error) {
+      logger.error('Error in findWithVersions:', {
+        packageName: name,
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
+      });
+      throw error;
+    }
   }
 
   public async update(id: string, updates: Partial<Package>): Promise<Package | null> {

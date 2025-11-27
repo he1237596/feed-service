@@ -22,6 +22,32 @@ export const initFeedRoutes = (db: Database): void => {
   downloadModel = new DownloadModel(db);
 };
 
+// Piral CLI compatible feed endpoint
+router.get('/pilets', optionalAuth, asyncHandler(async (req: any, res: Response) => {
+  const packages = await packageModel.findAll(100, 0, { 
+    isPublic: true 
+  });
+
+  const feedItems = await Promise.all(packages.map(async (pkg) => {
+    const versions = await versionModel.findByPackageId(pkg.id);
+    const latestVersion = versionModel.getLatestVersion(versions);
+    
+    return {
+      name: pkg.name,
+      version: latestVersion?.version || '0.0.0',
+      description: pkg.description,
+      author: pkg.author,
+      link: `${req.protocol}://${req.get('host')}/api/feed/${pkg.name}`,
+      created: pkg.createdAt.toISOString(),
+      updated: pkg.updatedAt.toISOString()
+    };
+  }));
+
+  res.json({
+    items: feedItems
+  });
+}));
+
 // Get overall feed information
 router.get('/', optionalAuth, asyncHandler(async (req: any, res: Response) => {
   const stats = await downloadModel.getOverallStats();
@@ -65,6 +91,7 @@ router.get('/:name', optionalAuth, validateParams(packageNameParamSchema), async
     version: version.version,
     changelog: version.changelog,
     isDeprecated: version.isDeprecated,
+    isLatest: version.isLatest,
     createdAt: version.createdAt.toISOString(),
     downloadUrl: `${req.protocol}://${req.get('host')}/api/versions/${name}/${version.version}/download`,
     size: version.fileSize,

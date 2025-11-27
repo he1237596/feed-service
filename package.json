@@ -15,7 +15,9 @@
     "lint": "eslint src/**/*.ts",
     "lint:fix": "eslint src/**/*.ts --fix",
     "migrate": "node dist/database/migrate.js",
-    "seed": "node dist/database/seed.js"
+    "seed": "node dist/database/seed.js",
+    "cleanup": "ts-node scripts/cleanup-db.ts",
+    "cleanup:db": "npm run cleanup"
   },
   "keywords": ["piral", "microfrontend", "feed-service", "seed-management"],
   "author": "Feed Service Team",

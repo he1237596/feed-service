@@ -41,7 +41,7 @@ const storage = multer.diskStorage({
 const upload = multer({
   storage,
   limits: {
-    fileSize: parseInt(process.env.MAX_FILE_SIZE || '52428800') // 50MB default
+    fileSize: parseInt(process.env.MAX_FILE_SIZE || '524288000') // 500MB default
   },
   fileFilter: (req, file, cb) => {
     const allowedTypes = process.env.ALLOWED_FILE_TYPES?.split(',') || ['.tgz', '.tar.gz'];
@@ -61,17 +61,25 @@ router.get('/:packageName', optionalAuth, validateParams(packageParamSchema), va
   const { page, limit, sort, order } = req.query as any;
   const offset = (page - 1) * limit;
 
+  logger.info(`Getting versions for package: ${packageName}`);
+  
   const pkg = await packageModel.findByName(packageName);
   if (!pkg) {
+    logger.error(`Package not found: ${packageName}`);
     throw new AppError('Package not found', 404);
   }
 
+  logger.info(`Found package: ${pkg.name} (ID: ${pkg.id}, isPublic: ${pkg.isPublic})`);
+
   // Check permissions
   if (!pkg.isPublic && (!req.user || (req.user.role !== 'admin' && pkg.authorId !== req.user.id))) {
+    logger.warn(`Permission denied for package: ${packageName}, user: ${req.user?.email || 'anonymous'}`);
     throw new AppError('Package not found', 404);
   }
 
   const versions = await versionModel.findByPackageId(pkg.id);
+  logger.info(`Found ${versions.length} versions for package: ${packageName}`);
+  
   const downloadStats = await versionModel.getDownloadStats(pkg.id);
 
   // Combine versions with download stats
@@ -287,7 +295,12 @@ router.delete('/:packageName/:version', auth, validateParams(packageVersionSchem
 
   // Delete associated file if exists
   if (versionInfo.filePath && fs.existsSync(versionInfo.filePath)) {
-    fs.unlinkSync(versionInfo.filePath);
+    try {
+      fs.unlinkSync(versionInfo.filePath);
+    } catch (error) {
+      console.error(`Failed to delete file ${versionInfo.filePath}:`, error);
+      // Continue with database deletion even if file deletion fails
+    }
   }
 
   const deleted = await versionModel.delete(versionInfo.id);
@@ -414,5 +427,69 @@ router.get('/:packageName/:version/stats', validateParams(packageVersionSchema),
 
   res.json(response);
 }));
+
+// Initialize routes that require auth middleware
+export const initVersionAuthRoutes = (): void => {
+  // Set latest version (admin only)
+  router.patch('/:packageName/:version/set-latest', auth, authorize('admin'), validateParams(packageVersionSchema), asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    const { packageName, version } = req.params;
+
+    const pkg = await packageModel.findByName(packageName);
+    if (!pkg) {
+      throw new AppError('Package not found', 404);
+    }
+
+    const versionInfo = await versionModel.findByPackageAndVersion(pkg.id, version);
+    if (!versionInfo) {
+      throw new AppError('Version not found', 404);
+    }
+
+    // Update all versions to not latest
+    await versionModel.updateAllLatest(pkg.id, false);
+    
+    // Set specified version as latest
+    await versionModel.updateLatest(versionInfo.id, true);
+
+    const response: ApiResponse = {
+      success: true,
+      data: {
+        message: `Version ${version} is now the latest version of ${packageName}`
+      }
+    };
+
+    res.json(response);
+  }));
+
+  // Deprecate/Undeprecate version (admin only)
+  router.patch('/:packageName/:version/deprecate', auth, authorize('admin'), validateParams(packageVersionSchema), asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    const { packageName, version } = req.params;
+    const { deprecate } = req.body; // true to deprecate, false to undeprecate
+
+    if (typeof deprecate !== 'boolean') {
+      throw new AppError('deprecate field is required and must be boolean', 400);
+    }
+
+    const pkg = await packageModel.findByName(packageName);
+    if (!pkg) {
+      throw new AppError('Package not found', 404);
+    }
+
+    const versionInfo = await versionModel.findByPackageAndVersion(pkg.id, version);
+    if (!versionInfo) {
+      throw new AppError('Version not found', 404);
+    }
+
+    await versionModel.updateDeprecated(versionInfo.id, deprecate);
+
+    const response: ApiResponse = {
+      success: true,
+      data: {
+        message: `Version ${version} of ${packageName} has been ${deprecate ? 'deprecated' : 'undeprecated'}`
+      }
+    };
+
+    res.json(response);
+  }));
+};
 
 export default router;

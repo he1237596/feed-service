@@ -83,6 +83,7 @@ export interface FeedVersion {
   version: string;
   changelog?: string;
   isDeprecated: boolean;
+  isLatest: boolean;
   createdAt: string;
   downloadUrl: string;
   size?: number;

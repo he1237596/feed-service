@@ -21,7 +21,7 @@ services:
       - CORS_ORIGIN=${CORS_ORIGIN:-*}
       - RATE_LIMIT_WINDOW_MS=900000
       - RATE_LIMIT_MAX_REQUESTS=100
-      - MAX_FILE_SIZE=52428800
+      - MAX_FILE_SIZE=524288000
       - ALLOWED_FILE_TYPES=.tgz,.tar.gz
       - LOG_LEVEL=info
     volumes:

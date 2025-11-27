@@ -16,7 +16,7 @@ import { Database } from './database/Database';
 // Routes
 import authRoutes, { initAuthRoutes } from './routes/auth';
 import packageRoutes, { initPackageRoutes } from './routes/packages';
-import versionRoutes, { initVersionRoutes } from './routes/versions';
+import versionRoutes, { initVersionRoutes, initVersionAuthRoutes } from './routes/versions';
 import feedRoutes, { initFeedRoutes } from './routes/feed';
 
 // Load environment variables
@@ -30,7 +30,6 @@ class FeedService {
     this.app = express();
     this.database = new Database();
     this.initializeMiddlewares();
-    this.initializeRoutes();
     this.initializeErrorHandling();
   }
 
@@ -53,18 +52,18 @@ class FeedService {
     // Rate limiting
     this.app.use(rateLimiter);
 
-  // Static files
-  const storagePath = process.env.STORAGE_PATH || './storage';
-  const publicPath = path.join(__dirname, '../public');
-  
-  if (!fs.existsSync(storagePath)) {
-    fs.mkdirSync(storagePath, { recursive: true });
-  }
-  this.app.use('/static', express.static(storagePath));
-  this.app.use(express.static(publicPath));
+    // Static files
+    const storagePath = process.env.STORAGE_PATH || './storage';
+    const publicPath = path.join(__dirname, '../public');
+    
+    if (!fs.existsSync(storagePath)) {
+      fs.mkdirSync(storagePath, { recursive: true });
+    }
+    this.app.use('/static', express.static(storagePath));
+    this.app.use(express.static(publicPath));
   }
 
-  private initializeRoutes(): void {
+  private setupRoutes(): void {
     // Health check
     this.app.get('/health', (req, res) => {
       res.json({ 
@@ -74,10 +73,6 @@ class FeedService {
       });
     });
 
-    // Note: Routes will be added after initialization in start() method
-  }
-
-  private setupRoutes(): void {
     // API Routes (setup after auth and database initialization)
     this.app.use('/api/auth', authRoutes);
     this.app.use('/api/packages', packageRoutes);
@@ -111,6 +106,7 @@ class FeedService {
       initAuthRoutes(this.database);
       initPackageRoutes(this.database);
       initVersionRoutes(this.database);
+      initVersionAuthRoutes(); // Initialize auth-dependent routes after auth is ready
       initFeedRoutes(this.database);
       
       // Setup routes after all dependencies are initialized
