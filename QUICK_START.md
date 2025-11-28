@@ -29,6 +29,7 @@ cp .env.example .env
 ```env
 # 服务器配置
 PORT=3000
+WEB_PORT=3001
 NODE_ENV=development
 
 # 数据库配置
@@ -76,7 +77,8 @@ npm start
 
 访问以下端点验证服务是否正常运行：
 
-- **健康检查**: http://localhost:3000/health
+- **后端健康检查**: http://localhost:3000/health
+- **前端界面**: http://localhost:3001
 - **API 文档**: http://localhost:3000/api/feed
 
 ## 🐳 Docker 部署

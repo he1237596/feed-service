@@ -26,7 +26,7 @@ class ErrorBoundary extends Component<Props, State> {
     console.error('Error caught by boundary:', error, errorInfo)
     
     // 可以在这里添加错误上报逻辑
-    if (process.env.NODE_ENV === 'production') {
+    if (import.meta.env.MODE === 'production') {
       // 上报错误到监控服务
       console.error('Error Info:', errorInfo)
     }
@@ -48,7 +48,7 @@ class ErrorBoundary extends Component<Props, State> {
           icon={<ExclamationCircleOutlined />}
           title="页面出错了"
           subTitle={
-            process.env.NODE_ENV === 'development' 
+            import.meta.env.DEV 
               ? this.state.error?.message 
               : '抱歉，页面遇到了一些问题'
           }

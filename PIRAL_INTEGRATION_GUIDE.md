@@ -46,10 +46,10 @@ docker compose up -d
 docker compose exec feed-service node seed.js
 ```
 
-前端管理界面将在 `http://localhost:3002` 启动
+前端管理界面将在 `http://localhost:3001` 启动
 
 ### 1.3 访问管理界面
-- 打开浏览器访问：http://localhost:3002
+- 打开浏览器访问：http://localhost:3001
 - 使用管理员账户登录：
   - 邮箱：`admin@piral-feed-service.com`
   - 密码：`admin123456`
@@ -142,7 +142,7 @@ npx pilet start --debug --feed=http://localhost:3000/api/feed/pilets
 ```
 
 #### 方式二：使用Web界面上传
-1. 打开 http://localhost:3002
+1. 打开 http://localhost:3001
 2. 使用管理员账户登录：`admin@piral-feed-service.com` / `admin123456`
 3. 点击"包管理"
 4. 点击"上传新包"
@@ -224,7 +224,7 @@ curl -X DELETE http://localhost:3000/api/packages/my-awesome-pilet/versions/1.0.
 ### 5.3 团队协作
 ```bash
 # 1. 为团队成员创建用户账户
-# 访问 http://localhost:3002/users
+# 访问 http://localhost:3001/users
 
 # 2. 或者通过API创建用户
 curl -X POST http://localhost:3000/api/auth/register \
@@ -362,7 +362,7 @@ LOG_LEVEL=warn
 
 - [Piral官方文档](https://docs.piral.io)
 - [Pilet API参考](https://docs.piral.io/reference/pilet-api)
-- [Feed Service API文档](http://localhost:3002) （服务启动后访问）
+- [Feed Service API文档](http://localhost:3001) （服务启动后访问）
 - [Feed Service源代码](https://github.com/your-org/piral-feed-service)
 
 ## 🤝 获取帮助

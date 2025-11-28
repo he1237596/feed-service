@@ -92,7 +92,7 @@ const Dashboard: React.FC = () => {
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
                     <div>
                       <Text strong>{item.name}</Text>
-                      <Tag color="blue" size="small" style={{ marginLeft: 8 }}>{item.version}</Tag>
+                      <Tag color="blue" style={{ marginLeft: 8 }}>{item.version}</Tag>
                     </div>
                     <Text type="secondary" style={{ fontSize: '12px' }}>{item.downloads || 0} 次</Text>
                   </div>

@@ -18,6 +18,7 @@
 
 - Node.js >= 16.0.0
 - npm >= 8.0.0
+- Docker (推荐用于生产部署)
 
 ### 安装
 
@@ -58,6 +59,20 @@ npm run dev
 
 ### 生产部署
 
+#### Docker部署（推荐）
+```bash
+# 启动所有服务（前端+后端）
+docker compose up -d
+
+# 初始化种子数据
+docker compose exec feed-service node seed.js
+
+# 访问地址：
+# 后端API: http://localhost:3000
+# 前端界面: http://localhost:3001
+```
+
+#### 传统部署
 ```bash
 # 构建前端
 cd web
@@ -81,7 +96,7 @@ npm run seed
 
 #### Docker 环境
 ```bash
-# 启动容器
+# 启动所有服务（前端+后端）
 docker compose up -d
 
 # 运行种子数据（自动创建管理员账户和示例包）
@@ -91,6 +106,10 @@ docker compose exec feed-service node seed.js
 管理员账户：
 - 邮箱：`admin@piral-feed-service.com`
 - 密码：`admin123456`
+
+**访问地址**：
+- 后端API: http://localhost:3000
+- 前端界面: http://localhost:3001
 
 ## API 文档
 
@@ -165,7 +184,8 @@ docker run -p 3000:3000 -v $(pwd)/data:/app/data piral-feed-service
 
 | 环境变量 | 默认值 | 说明 |
 |---------|--------|------|
-| PORT | 3000 | 服务端口 |
+| PORT | 3000 | 后端服务端口 |
+| WEB_PORT | 3001 | 前端服务端口 |
 | NODE_ENV | development | 运行环境 |
 | DB_PATH | ./data/feed-service.db | 数据库文件路径 |
 | JWT_SECRET | - | JWT 密钥 |
