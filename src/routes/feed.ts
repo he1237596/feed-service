@@ -48,18 +48,24 @@ router.get('/pilets', optionalAuth, asyncHandler(async (req: any, res: Response)
   });
 }));
 
-// Get overall feed information
+  // Get overall feed information
 router.get('/', optionalAuth, asyncHandler(async (req: any, res: Response) => {
   const stats = await downloadModel.getOverallStats();
-  const popularPackages = await packageModel.getPopular(5);
+  const popularPackages = await packageModel.getPopular(10);
   const recentPackages = await packageModel.getRecent(5);
   const recentDownloads = await downloadModel.getRecentDownloads(10);
+
+  // 转换热门包数据结构，确保下载次数字段正确
+  const transformedPopularPackages = popularPackages.map((pkg: any) => ({
+    ...pkg,
+    downloads: pkg.download_count || 0 // 确保使用正确的下载次数字段
+  }));
 
   const response: ApiResponse = {
     success: true,
     data: {
       stats,
-      popularPackages,
+      popularPackages: transformedPopularPackages,
       recentPackages,
       recentDownloads,
       timestamp: new Date().toISOString()

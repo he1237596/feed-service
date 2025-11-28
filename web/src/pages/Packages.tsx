@@ -27,6 +27,8 @@ import { useNavigate } from 'react-router-dom'
 import type { ColumnsType } from 'antd/es/table'
 import type { Package } from '@/types'
 import useAuthStore from '@/stores/authStore'
+import { useApiQuery, useApiMutationWithSuccess } from '@/hooks/useApi'
+import api from '@/utils/api'
 
 const { Title } = Typography
 const { TextArea } = Input
@@ -53,8 +55,8 @@ const Packages: React.FC = () => {
   const queryClient = useQueryClient()
 
   // 获取包列表
-  const { data: packagesData, isLoading } = useQuery(
-    ['packages', currentPage, pageSize, searchText],
+  const { data: packagesData, isLoading } = useApiQuery(
+    ['packages', currentPage.toString(), pageSize.toString(), searchText],
     async () => {
       const params = new URLSearchParams({
         page: currentPage.toString(),
@@ -62,37 +64,21 @@ const Packages: React.FC = () => {
         ...(searchText && { q: searchText }),
       })
       
-      const response = await fetch(`/api/packages?${params}`)
-      return response.json()
+      return api.get(`/packages?${params}`)
     },
   )
 
   // 删除包
-  const deletePackageMutation = useMutation(
+  const deletePackageMutation = useApiMutationWithSuccess(
     async (packageName: string) => {
-      const token = useAuthStore.getState().token
-      const response = await fetch(`/api/packages/${packageName}`, {
-        method: 'DELETE',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      })
-      
-      if (!response.ok) {
-        throw new Error('删除失败')
-      }
-      
-      return response.json()
+      return api.delete(`/packages/${packageName}`)
     },
+    '删除成功',
     {
       onSuccess: () => {
-        message.success('删除成功')
         queryClient.invalidateQueries('packages')
       },
-      onError: () => {
-        message.error('删除失败')
-      },
-    },
+    }
   )
 
   const columns: ColumnsType<Package> = [
@@ -200,28 +186,29 @@ const Packages: React.FC = () => {
     setIsModalVisible(true)
   }
 
+  // 更新包
+  const updatePackageMutation = useApiMutationWithSuccess(
+    async (data: { packageName: string; values: any }) => {
+      return api.put(`/packages/${data.packageName}`, data.values)
+    },
+    '更新成功',
+    {
+      onSuccess: () => {
+        setIsModalVisible(false)
+        setEditingPackage(null)
+        form.resetFields()
+        queryClient.invalidateQueries('packages')
+      },
+    }
+  )
+
   const handleModalOk = async () => {
     try {
       const values = await form.validateFields()
-      const token = useAuthStore.getState().token
-      const response = await fetch(`/api/packages/${editingPackage!.name}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(values),
+      updatePackageMutation.mutate({
+        packageName: editingPackage!.name,
+        values
       })
-
-      if (!response.ok) {
-        throw new Error('更新失败')
-      }
-
-      message.success('更新成功')
-      setIsModalVisible(false)
-      setEditingPackage(null)
-      form.resetFields()
-      queryClient.invalidateQueries('packages')
     } catch (error: any) {
       message.error(error.message || '更新失败')
     }
@@ -436,6 +423,22 @@ const Packages: React.FC = () => {
           }}
         >
           <Form.Item
+            label="选择文件"
+            name="package"
+            rules={[
+              { required: true, message: '请选择要上传的文件' }
+            ]}
+            extra="仅支持 .tgz 或 .tar.gz 格式的文件，最大50MB"
+          >
+            <Upload 
+              {...uploadProps}
+              accept=".tgz,.tar.gz"
+            >
+              <Button icon={<UploadOutlined />}>选择文件</Button>
+            </Upload>
+          </Form.Item>
+          
+          <Form.Item
             label="包名"
             name="name"
             rules={[
@@ -467,22 +470,6 @@ const Packages: React.FC = () => {
             valuePropName="checked"
           >
             <Switch checkedChildren="公开" unCheckedChildren="私有" />
-          </Form.Item>
-          
-          <Form.Item
-            label="选择文件"
-            name="package"
-            rules={[
-              { required: true, message: '请选择要上传的文件' }
-            ]}
-            extra="仅支持 .tgz 或 .tar.gz 格式的文件，最大50MB"
-          >
-            <Upload 
-              {...uploadProps}
-              accept=".tgz,.tar.gz"
-            >
-              <Button icon={<UploadOutlined />}>选择文件</Button>
-            </Upload>
           </Form.Item>
         </Form>
       </Modal>

@@ -8,30 +8,29 @@ import {
   RiseOutlined,
 } from '@ant-design/icons'
 import { useQuery } from 'react-query'
+import api from '@/utils/api'
 
 const { Title, Text } = Typography
 
 const Dashboard: React.FC = () => {
-  // 获取统计数据
-  const { data: stats } = useQuery('dashboard-stats', async () => {
-    const response = await fetch('/api/feed')
-    const data = await response.json()
-    return data.data.stats
-  })
+  // 获取所有 dashboard 数据（单次请求）
+  const { data: dashboardData, isLoading: statsLoading } = useQuery(
+    'dashboard-data', 
+    async () => {
+      const data = await api.get('/feed/')
+      return data.data || {}
+    },
+    {
+      retry: 2,
+      staleTime: 30000, // 30秒缓存
+    }
+  )
 
-  // 获取最近下载
-  const { data: recentDownloads } = useQuery('recent-downloads', async () => {
-    const response = await fetch('/api/feed')
-    const data = await response.json()
-    return data.data.recentDownloads
-  })
-
-  // 获取热门包
-  const { data: popularPackages } = useQuery('popular-packages', async () => {
-    const response = await fetch('/api/packages/popular/list?limit=5')
-    const data = await response.json()
-    return data.data.packages
-  })
+  // 从返回数据中提取各部分
+  const stats = dashboardData?.stats || {}
+  const recentDownloads = dashboardData?.recentDownloads || []
+  const popularPackages = dashboardData?.popularPackages || []
+  const downloadsLoading = statsLoading // 共用加载状态
 
   return (
     <div>
@@ -84,20 +83,19 @@ const Dashboard: React.FC = () => {
       <Row gutter={[16, 16]}>
         {/* 热门包 */}
         <Col xs={24} lg={12}>
-          <Card title="热门包" style={{ height: 400 }}>
+          <Card title="热门包 (Top 5)" style={{ height: 240 }}>
             <List
-              dataSource={popularPackages || []}
+              size="small"
+              dataSource={popularPackages?.slice(0, 5) || []}
               renderItem={(item: any) => (
-                <List.Item>
-                  <List.Item.Meta
-                    title={
-                      <Space>
-                        <Text strong>{item.name}</Text>
-                        <Tag color="blue">{item.version}</Tag>
-                      </Space>
-                    }
-                    description={`${item.downloads} 次下载`}
-                  />
+                <List.Item style={{ padding: '6px 0', border: 'none' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                    <div>
+                      <Text strong>{item.name}</Text>
+                      <Tag color="blue" size="small" style={{ marginLeft: 8 }}>{item.version}</Tag>
+                    </div>
+                    <Text type="secondary" style={{ fontSize: '12px' }}>{item.downloads || 0} 次</Text>
+                  </div>
                 </List.Item>
               )}
             />
@@ -106,22 +104,23 @@ const Dashboard: React.FC = () => {
 
         {/* 最近下载 */}
         <Col xs={24} lg={12}>
-          <Card title="最近下载" style={{ height: 400 }}>
+          <Card title="最近下载 (最近5条)" style={{ height: 240 }}>
             <List
-              dataSource={recentDownloads || []}
+              size="small"
+              dataSource={recentDownloads?.slice(0, 5) || []}
               renderItem={(item: any) => (
-                <List.Item>
-                  <List.Item.Meta
-                    title={item.packageName}
-                    description={
-                      <Space direction="vertical" size={0}>
-                        <Text type="secondary">版本: {item.version}</Text>
-                        <Text type="secondary" style={{ fontSize: '12px' }}>
-                          {new Date(item.downloadedAt).toLocaleString()}
-                        </Text>
-                      </Space>
-                    }
-                  />
+                <List.Item style={{ padding: '6px 0', border: 'none' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                    <div>
+                      <Text strong style={{ fontSize: '13px' }}>{item.packageName}</Text>
+                      <Text type="secondary" style={{ fontSize: '11px', display: 'block' }}>
+                        版本: {item.version}
+                      </Text>
+                    </div>
+                    <Text type="secondary" style={{ fontSize: '11px' }}>
+                      {new Date(item.downloadedAt).toLocaleDateString()}
+                    </Text>
+                  </div>
                 </List.Item>
               )}
             />

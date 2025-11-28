@@ -1,6 +1,6 @@
 import React from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
-import { Layout, ConfigProvider, theme } from 'antd'
+import { ConfigProvider } from 'antd'
 import useAuthStore from '@/stores/authStore'
 import useThemeStore from '@/stores/themeStore'
 import Login from '@/pages/Login'

@@ -34,11 +34,26 @@ class FeedService {
   }
 
   private initializeMiddlewares(): void {
-    // Security
-    this.app.use(helmet());
+    // CORS first - before helmet to ensure headers are not blocked
+    // Force CORS to be wide open for development
     this.app.use(cors({
-      origin: process.env.CORS_ORIGIN || '*',
-      credentials: true
+      origin: '*',
+      credentials: true,
+      methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS', 'HEAD'],
+      allowedHeaders: ['*'],
+      exposedHeaders: ['Content-Range', 'X-Content-Range'],
+      preflightContinue: false,
+      optionsSuccessStatus: 204,
+      maxAge: 86400 // 24 hours
+    }));
+
+    // Handle preflight requests
+    this.app.options('*', cors());
+
+    // Security (after CORS to not interfere)
+    this.app.use(helmet({
+      crossOriginEmbedderPolicy: false,
+      contentSecurityPolicy: false
     }));
 
     // Performance
@@ -59,6 +74,23 @@ class FeedService {
     if (!fs.existsSync(storagePath)) {
       fs.mkdirSync(storagePath, { recursive: true });
     }
+    // Debug middleware to check CORS headers
+    this.app.use((req, res, next) => {
+      const originalSend = res.send;
+      res.send = function(data) {
+        logger.info(`Response Headers for ${req.method} ${req.path}:`, {
+          'access-control-allow-origin': res.getHeader('access-control-allow-origin'),
+          'access-control-allow-methods': res.getHeader('access-control-allow-methods'),
+          'access-control-allow-headers': res.getHeader('access-control-allow-headers'),
+          'content-type': res.getHeader('content-type')
+        });
+        return originalSend.call(this, data);
+      };
+      
+      logger.info(`Request: ${req.method} ${req.path} from origin: ${req.headers.origin || 'no-origin'}`);
+      next();
+    });
+
     this.app.use('/static', express.static(storagePath));
     this.app.use(express.static(publicPath));
   }

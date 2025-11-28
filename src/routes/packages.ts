@@ -7,23 +7,22 @@ import { Database } from '../database/Database';
 import { PackageModel } from '../database/models/Package';
 import { VersionModel } from '../database/models/Version';
 import { DownloadModel } from '../database/models/Download';
-import { validate, validateQuery, validateParams, packageCreateSchema, packageUpdateSchema, searchQuerySchema, paginationSchema, packageNameSchema, packageParamSchema, packageNameParamSchema } from '../utils/validation';
-import { auth, optionalAuth, authorize, AuthenticatedRequest } from '../middleware/auth';
+import { validate, validateQuery, validateParams, packageCreateSchema, packageUpdateSchema, searchQuerySchema, packageNameParamSchema } from '../utils/validation';
+import { auth, optionalAuth, AuthenticatedRequest } from '../middleware/auth';
 import { asyncHandler, AppError } from '../middleware/errorHandler';
 import { logger } from '../utils/logger';
 import { Helpers } from '../utils/helpers';
-import { ApiResponse, PackageWithVersions, UploadResponse } from '../types';
+import { ApiResponse, UploadResponse } from '../types';
+import { getPackageAndCheckAccess } from '../utils/permissions';
 
 const router = Router();
 let packageModel: PackageModel;
 let versionModel: VersionModel;
-let downloadModel: DownloadModel;
 
 // Initialize dependencies
 export const initPackageRoutes = (db: Database): void => {
   packageModel = new PackageModel(db);
   versionModel = new VersionModel(db);
-  downloadModel = new DownloadModel(db);
 };
 
 // Helper function to extract package info from package file
@@ -109,7 +108,7 @@ const upload = multer({
 
 // Get all packages (with optional search and pagination)
 router.get('/', optionalAuth, validateQuery(searchQuerySchema), asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-  const { q, author, sort, order, page, limit } = req.query as any;
+  const { q, author, page, limit } = req.query as any;
   const offset = (page - 1) * limit;
 
   let packages;
@@ -162,17 +161,8 @@ router.get('/:name', optionalAuth, validateParams(packageNameParamSchema), async
   const includeVersions = req.query.includeVersions === 'true';
 
   logger.info(`Looking for package: ${name}`);
-  const pkg = await packageModel.findByName(name);
-  if (!pkg) {
-    logger.error(`Package not found: ${name}`);
-    throw new AppError('Package not found', 404);
-  }
-  logger.info(`Found package: ${pkg.name} (ID: ${pkg.id})`);
-
-  // Check permissions
-  if (!pkg.isPublic && (!req.user || (req.user.role !== 'admin' && pkg.authorId !== req.user.id))) {
-    throw new AppError('Package not found', 404);
-  }
+  const pkg = await getPackageAndCheckAccess(req, name, packageModel, true);
+  logger.info(`Found package: ${pkg!.name} (ID: ${pkg!.id})`);
 
   let responseData;
   if (includeVersions) {
@@ -276,7 +266,8 @@ router.post('/upload', (req, res, next) => {
     let fresh = false;
     
     // Check query parameters
-    if (req.query.fresh === 'true' || req.query.fresh === true) {
+    const queryFresh = req.query.fresh;
+    if (queryFresh === 'true' || queryFresh === '1') {
       fresh = true;
     }
     
@@ -394,6 +385,24 @@ router.post('/upload', (req, res, next) => {
             fs.unlinkSync(existingVersion.filePath);
           } catch (cleanupError) {
             logger.warn('Failed to delete old version file:', cleanupError);
+          }
+        }
+        
+        // For fresh mode, if this is the latest version and other versions exist,
+        // we need to temporarily set another version as latest
+        if (existingVersion.isLatest) {
+          const allVersions = await versionModel.findByPackageId(existingVersion.packageId);
+          if (allVersions.length > 1) {
+            // Find the newest version that's not the one we're deleting
+            const otherVersions = allVersions.filter(v => v.id !== existingVersion.id);
+            if (otherVersions.length > 0) {
+              // Set the newest other version as latest temporarily
+              const newestVersion = otherVersions.sort((a, b) => 
+                new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+              )[0];
+              await versionModel.setLatest(newestVersion.packageId, newestVersion.id);
+              logger.info(`Temporarily set version ${newestVersion.version} as latest version for fresh mode`);
+            }
           }
         }
         
@@ -519,10 +528,12 @@ router.put('/:name', auth, validateParams(packageNameParamSchema), validate(pack
     throw new AppError('Permission denied', 403);
   }
 
-  const updatedPackage = await packageModel.update(pkg.id, {
-    description,
-    isPublic
-  });
+  // Only update allowed fields (ignore name field even if provided)
+  const updateData: any = {};
+  if (description !== undefined) updateData.description = description;
+  if (isPublic !== undefined) updateData.isPublic = isPublic;
+
+  const updatedPackage = await packageModel.update(pkg.id, updateData);
 
   const response: ApiResponse = {
     success: true,
@@ -632,5 +643,43 @@ router.get('/my/list', auth, asyncHandler(async (req: AuthenticatedRequest, res:
 }));
 
 
+
+// Piral Feed API - Returns feed format for Piral app shell
+router.get('/:name/feed', optionalAuth, validateParams(packageNameParamSchema), asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+  const { name } = req.params;
+
+  logger.info(`Feed request for package: ${name}`);
+  const pkg = await getPackageAndCheckAccess(req, name, packageModel, true);
+
+  // Get the latest version of this package
+  const latestVersion = await versionModel.findLatest(pkg!.id);
+  if (!latestVersion) {
+    logger.error(`No versions found for package: ${name}`);
+    throw new AppError('No versions found', 404);
+  }
+
+  // Generate the file URL for the latest version
+  const baseUrl = process.env.BASE_URL || 'http://localhost:3000';
+  const fileUrl = `${baseUrl}/api/versions/${name}/${latestVersion.version}/download`;
+  
+  // Generate hash from checksum if available, or create a default one
+  const hash = latestVersion.checksum || 'latest';
+
+  // Return Piral feed format
+  const feedResponse = {
+    items: [
+      {
+        name: pkg.name,
+        version: latestVersion.version,
+        link: fileUrl,
+        hash: hash,
+        noCache: false // Can be configured based on version or package settings
+      }
+    ]
+  };
+
+  logger.info(`Feed response for ${name}: version ${latestVersion.version}`);
+  res.json(feedResponse);
+}));
 
 export default router;

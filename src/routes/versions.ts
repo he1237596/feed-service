@@ -6,12 +6,13 @@ import { Database } from '../database/Database';
 import { PackageModel } from '../database/models/Package';
 import { VersionModel } from '../database/models/Version';
 import { DownloadModel } from '../database/models/Download';
-import { validate, validateQuery, validateParams, versionCreateSchema, searchQuerySchema, packageNameSchema, versionSchema, packageVersionSchema, packageParamSchema } from '../utils/validation';
+import { validate, validateQuery, validateParams, validateMultipleParams, versionCreateSchema, searchQuerySchema, packageNameSchema, versionSchema, packageVersionSchema, packageParamSchema } from '../utils/validation';
 import { auth, optionalAuth, authorize, AuthenticatedRequest } from '../middleware/auth';
 import { asyncHandler, AppError } from '../middleware/errorHandler';
 import { logger } from '../utils/logger';
 import { Helpers } from '../utils/helpers';
 import { ApiResponse } from '../types';
+import { checkPackageAccess, canEditPackage, requireAdmin, getPackageAndCheckAccess } from '../utils/permissions';
 
 const router = Router();
 let packageModel: PackageModel;
@@ -130,20 +131,12 @@ router.get('/:packageName', optionalAuth, validateParams(packageParamSchema), va
 }));
 
 // Get specific version details
-router.get('/:packageName/:version', optionalAuth, validateParams(packageVersionSchema), asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+router.get('/:packageName/:version', optionalAuth, validateMultipleParams(packageVersionSchema), asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   const { packageName, version } = req.params;
 
-  const pkg = await packageModel.findByName(packageName);
-  if (!pkg) {
-    throw new AppError('Package not found', 404);
-  }
+  const pkg = await getPackageAndCheckAccess(req, packageName, packageModel, true);
 
-  // Check permissions
-  if (!pkg.isPublic && (!req.user || (req.user.role !== 'admin' && pkg.authorId !== req.user.id))) {
-    throw new AppError('Package not found', 404);
-  }
-
-  const versionInfo = await versionModel.findByPackageAndVersion(pkg.id, version);
+  const versionInfo = await versionModel.findByPackageAndVersion(pkg!.id, version);
   if (!versionInfo) {
     throw new AppError('Version not found', 404);
   }
@@ -154,9 +147,9 @@ router.get('/:packageName/:version', optionalAuth, validateParams(packageVersion
     success: true,
     data: {
       ...versionInfo,
-      packageName: pkg.name,
-      packageDescription: pkg.description,
-      author: pkg.author,
+      packageName: pkg!.name,
+      packageDescription: pkg!.description,
+      author: pkg!.author,
       downloads: downloadCount
     }
   };
@@ -231,7 +224,7 @@ router.post('/:packageName', auth, upload.single('package'), validateParams(pack
 }));
 
 // Update version
-router.put('/:packageName/:version', auth, validateParams(packageVersionSchema), validate(versionCreateSchema), asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+router.put('/:packageName/:version', auth, validateMultipleParams(packageVersionSchema), validate(versionCreateSchema), asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   const { packageName, version } = req.params;
   const { changelog, isDeprecated } = req.body;
   
@@ -270,7 +263,7 @@ router.put('/:packageName/:version', auth, validateParams(packageVersionSchema),
 }));
 
 // Delete version
-router.delete('/:packageName/:version', auth, validateParams(packageVersionSchema), asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+router.delete('/:packageName/:version', auth, validateMultipleParams(packageVersionSchema), asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   const { packageName, version } = req.params;
   
   if (!req.user) {
@@ -317,7 +310,7 @@ router.delete('/:packageName/:version', auth, validateParams(packageVersionSchem
 }));
 
 // Set version as latest
-router.post('/:packageName/:version/latest', auth, validateParams(packageVersionSchema), asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+router.post('/:packageName/:version/latest', auth, validateMultipleParams(packageVersionSchema), asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   const { packageName, version } = req.params;
   
   if (!req.user) {
@@ -354,20 +347,12 @@ router.post('/:packageName/:version/latest', auth, validateParams(packageVersion
 }));
 
 // Download version
-router.get('/:packageName/:version/download', optionalAuth, validateParams(packageVersionSchema), asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+router.get('/:packageName/:version/download', optionalAuth, validateMultipleParams(packageVersionSchema), asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   const { packageName, version } = req.params;
 
-  const pkg = await packageModel.findByName(packageName);
-  if (!pkg) {
-    throw new AppError('Package not found', 404);
-  }
+  const pkg = await getPackageAndCheckAccess(req, packageName, packageModel, true);
 
-  // Check permissions
-  if (!pkg.isPublic && (!req.user || (req.user.role !== 'admin' && pkg.authorId !== req.user.id))) {
-    throw new AppError('Package not found', 404);
-  }
-
-  const versionInfo = await versionModel.findByPackageAndVersion(pkg.id, version);
+  const versionInfo = await versionModel.findByPackageAndVersion(pkg!.id, version);
   if (!versionInfo) {
     throw new AppError('Version not found', 404);
   }
@@ -379,7 +364,7 @@ router.get('/:packageName/:version/download', optionalAuth, validateParams(packa
   // Record download
   await downloadModel.create({
     versionId: versionInfo.id,
-    packageId: pkg.id,
+    packageId: pkg!.id,
     version: versionInfo.version,
     ipAddress: Helpers.getClientIp(req),
     userAgent: Helpers.getUserAgent(req)
@@ -396,7 +381,7 @@ router.get('/:packageName/:version/download', optionalAuth, validateParams(packa
 }));
 
 // Get version download statistics
-router.get('/:packageName/:version/stats', validateParams(packageVersionSchema), asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+router.get('/:packageName/:version/stats', validateMultipleParams(packageVersionSchema), asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   const { packageName, version } = req.params;
 
   const pkg = await packageModel.findByName(packageName);
@@ -431,8 +416,13 @@ router.get('/:packageName/:version/stats', validateParams(packageVersionSchema),
 // Initialize routes that require auth middleware
 export const initVersionAuthRoutes = (): void => {
   // Set latest version (admin only)
-  router.patch('/:packageName/:version/set-latest', auth, authorize('admin'), validateParams(packageVersionSchema), asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+  router.patch('/:packageName/:version/set-latest', auth, authorize(['admin']), asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    // Manual validation of params
     const { packageName, version } = req.params;
+    const validationResult = packageVersionSchema.validate({ packageName, version });
+    if (validationResult.error) {
+      throw new AppError('Invalid parameters', 400);
+    }
 
     const pkg = await packageModel.findByName(packageName);
     if (!pkg) {
@@ -461,8 +451,14 @@ export const initVersionAuthRoutes = (): void => {
   }));
 
   // Deprecate/Undeprecate version (admin only)
-  router.patch('/:packageName/:version/deprecate', auth, authorize('admin'), validateParams(packageVersionSchema), asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+  router.patch('/:packageName/:version/deprecate', auth, authorize(['admin']), asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    // Manual validation of params
     const { packageName, version } = req.params;
+    const validationResult = packageVersionSchema.validate({ packageName, version });
+    if (validationResult.error) {
+      throw new AppError('Invalid parameters', 400);
+    }
+    
     const { deprecate } = req.body; // true to deprecate, false to undeprecate
 
     if (typeof deprecate !== 'boolean') {

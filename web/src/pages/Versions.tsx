@@ -13,6 +13,7 @@ import {
   message,
   Upload,
   Popconfirm,
+  Switch,
 } from 'antd'
 import {
   ArrowLeftOutlined,
@@ -71,45 +72,37 @@ const Versions: React.FC = () => {
     },
   )
 
+  // 编辑包信息模态框状态
+  const [isEditPackageModalVisible, setIsEditPackageModalVisible] = useState(false)
+  const [editPackageForm] = Form.useForm()
+
   // 处理编辑包
   const handleEditPackage = () => {
     if (!packageData?.data) return
     
-    Modal.confirm({
-      title: '编辑包信息',
-      content: (
-        <div>
-          <p><strong>包名:</strong> {packageData.data.name}</p>
-          <p><strong>描述:</strong></p>
-          <Input.TextArea 
-            id="package-description"
-            defaultValue={packageData.data.description || ''}
-            placeholder="请输入包描述"
-            rows={3}
-            style={{ marginBottom: 16 }}
-          />
-          <div>
-            <strong>公开状态:</strong>
-            <Switch 
-              id="package-public"
-              defaultChecked={packageData.data.isPublic}
-              style={{ marginLeft: 8 }}
-            />
-          </div>
-        </div>
-      ),
-      width: 500,
-      onOk: () => {
-        const description = (document.getElementById('package-description') as HTMLTextAreaElement).value
-        const isPublic = (document.getElementById('package-public') as any).checked
-        
-        updatePackageMutation.mutate({
-          name: packageData.data.name,
-          description,
-          isPublic
-        })
-      },
+    setIsEditPackageModalVisible(true)
+    editPackageForm.setFieldsValue({
+      description: packageData.data.description || '',
+      isPublic: packageData.data.isPublic
     })
+  }
+
+  // 处理包信息更新
+  const handleEditPackageOk = async () => {
+    try {
+      const values = await editPackageForm.validateFields()
+      
+      updatePackageMutation.mutate({
+        name: packageData!.data.name,
+        description: values.description,
+        isPublic: values.isPublic
+      })
+      
+      setIsEditPackageModalVisible(false)
+    } catch (error) {
+      // 验证失败，阻止弹窗关闭
+      console.error('表单验证失败:', error)
+    }
   }
 
   // 获取包信息
@@ -443,6 +436,51 @@ const Versions: React.FC = () => {
             支持 .tgz, .tar.gz 格式文件，最大 50MB
           </p>
         </div>
+      </Modal>
+
+      {/* 编辑包信息模态框 */}
+      <Modal
+        title="编辑包信息"
+        open={isEditPackageModalVisible}
+        onOk={handleEditPackageOk}
+        onCancel={() => {
+          setIsEditPackageModalVisible(false)
+          editPackageForm.resetFields()
+        }}
+        okText="保存"
+        cancelText="取消"
+        width={500}
+      >
+        <Form
+          form={editPackageForm}
+          layout="vertical"
+        >
+          <Form.Item
+            label="包名"
+            style={{ marginBottom: 16 }}
+          >
+            <Input value={packageData?.data?.name} disabled />
+          </Form.Item>
+          <Form.Item
+            name="description"
+            label="描述"
+            rules={[
+              { max: 500, message: '描述不能超过500个字符' }
+            ]}
+          >
+            <Input.TextArea 
+              placeholder="请输入包描述"
+              rows={3}
+            />
+          </Form.Item>
+          <Form.Item
+            name="isPublic"
+            label="公开状态"
+            valuePropName="checked"
+          >
+            <Switch checkedChildren="公开" unCheckedChildren="私有" />
+          </Form.Item>
+        </Form>
       </Modal>
     </div>
   )

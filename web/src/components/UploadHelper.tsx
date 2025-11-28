@@ -1,5 +1,5 @@
 import React from 'react'
-import { Upload, Button, Alert, Space, Typography } from 'antd'
+import { Upload, Button, Alert, Space, Typography, message } from 'antd'
 import { UploadOutlined, InfoCircleOutlined } from '@ant-design/icons'
 
 const { Text, Title } = Typography

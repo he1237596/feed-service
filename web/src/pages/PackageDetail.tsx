@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Card, Typography, Tag, Button, Space, Table, message, Descriptions, Modal, Switch, Upload } from 'antd'
 import {
@@ -14,6 +14,7 @@ import { useQuery, useMutation, useQueryClient } from 'react-query'
 import type { ColumnsType } from 'antd/es/table'
 import type { Package, Version } from '@/types'
 import useAuthStore from '@/stores/authStore'
+import useThemeStore from '@/stores/themeStore'
 
 const { Title, Text } = Typography
 
@@ -21,6 +22,7 @@ const PackageDetail: React.FC = () => {
   const { name } = useParams<{ name: string }>()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const { theme } = useThemeStore()
 
   // 获取包详细信息
   const { data: packageData, isLoading } = useQuery(
@@ -189,7 +191,15 @@ const PackageDetail: React.FC = () => {
             defaultValue={packageData.data.description || ''}
             placeholder="请输入包描述"
             rows={3}
-            style={{ width: '100%', marginBottom: 16, padding: '4px', border: '1px solid #d9d9d9', borderRadius: '2px' }}
+            style={{ 
+              width: '100%', 
+              marginBottom: 16, 
+              padding: '4px', 
+              border: theme === 'dark' ? '1px solid #434343' : '1px solid #d9d9d9', 
+              borderRadius: '2px',
+              backgroundColor: theme === 'dark' ? '#141414' : '#ffffff',
+              color: theme === 'dark' ? '#ffffff' : '#000000'
+            }}
           />
           <div>
             <strong>公开状态:</strong>
@@ -216,11 +226,70 @@ const PackageDetail: React.FC = () => {
     })
   }
 
-  // 上传新版本的表单
-  const handleUpload = async (file: File) => {
+  // 上传状态
+  const [isUploading, setIsUploading] = useState<boolean>(false)
+
+  // 上传前检查
+  const beforeUpload = (file: File) => {
+    if (file.size > 50 * 1024 * 1024) {
+      message.error('文件大小不能超过50MB')
+      return false
+    }
+    
+    // 检查是否已存在相同版本
+    const existingVersions = packageData?.data?.versions || []
+    const fileName = file.name
+    const versionMatch = fileName.match(/(\d+\.\d+\.\d+(-.*)?)/)
+    const extractedVersion = versionMatch ? versionMatch[1] : null
+    
+    const isDuplicate = extractedVersion && existingVersions.some((v: any) => v.version === extractedVersion)
+
+    if (isDuplicate) {
+      Modal.confirm({
+        title: '版本已存在',
+        content: (
+          <div>
+            <p>版本 <strong>{extractedVersion}</strong> 已存在。</p>
+            <p>是否要覆盖上传这个版本？</p>
+          </div>
+        ),
+        okText: '覆盖上传',
+        cancelText: '取消',
+        onOk: () => {
+          // 直接上传，简化处理
+          uploadVersion(file, true)
+        },
+      })
+    } else {
+      // 直接上传，简化处理
+      uploadVersion(file, false)
+    }
+    
+    return false // 阻止自动上传
+  }
+
+  // 实际上传版本
+  const uploadVersion = async (file: File, fresh: boolean = false) => {
+    setIsUploading(true)
+    
+    // 使用更安全的 FormData 构造方式
     const formData = new FormData()
-    formData.append('package', file)
-    formData.append('name', packageData!.data!.name) // 使用当前包名
+    
+    // 添加文件
+    formData.set('file', file) // 使用 set 而不是 append
+    
+    // 添加 fresh 参数
+    if (fresh) {
+      formData.set('fresh', 'true')
+    }
+
+    // 调试信息
+    console.log('开始上传:', {
+      fileName: file.name,
+      fileSize: file.size,
+      fresh,
+      formDataKeys: Array.from(formData.keys())
+    })
 
     try {
       const token = useAuthStore.getState().token
@@ -233,10 +302,11 @@ const PackageDetail: React.FC = () => {
       })
 
       if (!response.ok) {
-        throw new Error('上传失败')
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || `上传失败 (${response.status})`)
       }
 
-      message.success('新版本上传成功')
+      message.success(`新版本${fresh ? '覆盖' : ''}上传成功`)
       setUploadModalVisible(false)
       queryClient.invalidateQueries(['package', name])
       queryClient.invalidateQueries('dashboard-stats')
@@ -244,6 +314,8 @@ const PackageDetail: React.FC = () => {
       queryClient.invalidateQueries('packages')
     } catch (error: any) {
       message.error(error.message || '上传失败')
+    } finally {
+      setIsUploading(false)
     }
   }
 
@@ -281,6 +353,8 @@ const PackageDetail: React.FC = () => {
     {
       title: '操作',
       key: 'actions',
+      fixed: 'right',
+      width: 400,
       render: (_, record: Version) => {
         const user = useAuthStore.getState().user
         const isAdmin = user?.role === 'admin'
@@ -406,17 +480,17 @@ const PackageDetail: React.FC = () => {
           {canEdit && (
             <Space>
               <Button 
-                icon={<EditOutlined />} 
-                onClick={() => handleEditPackage()}
-              >
-                编辑
-              </Button>
-              <Button 
                 icon={<UploadOutlined />} 
                 type="primary"
                 onClick={() => setUploadModalVisible(true)}
               >
                 上传新版本
+              </Button>
+              <Button 
+                icon={<EditOutlined />} 
+                onClick={() => handleEditPackage()}
+              >
+                编辑
               </Button>
             </Space>
           )}
@@ -428,6 +502,7 @@ const PackageDetail: React.FC = () => {
         <Table
           columns={versionColumns}
           dataSource={pkg.versions || []}
+          scroll={{ x: 1200 }}
           rowKey="id"
           pagination={{
             pageSize: 10,
@@ -445,26 +520,35 @@ const PackageDetail: React.FC = () => {
         footer={null}
         width={500}
       >
-        <div style={{ textAlign: 'center', padding: '20px 0' }}>
+        <div style={{ textAlign: 'center', padding: '20px 0', color: theme === 'dark' ? '#ffffff' : '#000000' }}>
           <Upload.Dragger
-            name="package"
-            beforeUpload={(file: File) => {
-              if (file.size > 50 * 1024 * 1024) {
-                message.error('文件大小不能超过50MB')
-                return false
-              }
-              handleUpload(file)
-              return false // 阻止默认上传行为
-            }}
+            name="file"
+            beforeUpload={beforeUpload}
             showUploadList={false}
+            disabled={isUploading}
+            style={{ 
+              backgroundColor: theme === 'dark' ? '#141414' : '#fafafa',
+              borderColor: theme === 'dark' ? '#434343' : '#d9d9d9'
+            }}
           >
-            <p className="ant-upload-drag-icon">
-              <UploadOutlined />
-            </p>
-            <p className="ant-upload-text">点击或拖拽文件到此区域上传</p>
-            <p className="ant-upload-hint">
-              支持 .tgz, .tar.gz 格式文件，最大 50MB
-            </p>
+            {isUploading ? (
+              <div>
+                <div style={{ fontSize: '24px', marginBottom: '16px' }}>⏳</div>
+                <p style={{ color: theme === 'dark' ? '#ffffff' : '#000000' }}>正在上传...</p>
+              </div>
+            ) : (
+              <>
+                <p className="ant-upload-drag-icon">
+                  <UploadOutlined />
+                </p>
+                <p className="ant-upload-text" style={{ color: theme === 'dark' ? '#ffffff' : '#000000' }}>
+                  点击或拖拽文件到此区域上传
+                </p>
+                <p className="ant-upload-hint" style={{ color: theme === 'dark' ? '#a6a6a6' : '#8c8c8c' }}>
+                  支持 .tgz, .tar.gz 格式文件，最大 50MB
+                </p>
+              </>
+            )}
           </Upload.Dragger>
         </div>
       </Modal>

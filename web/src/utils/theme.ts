@@ -86,11 +86,10 @@ const lightTheme: ThemeConfig = {
     Menu: {
       itemBg: '#ffffff',
       itemSelectedBg: '#e6f7ff',
-      itemHoverBg: '#f5f5f5',
+      itemHoverBg: '#f0f7ff',
       itemColor: '#262626',
       itemSelectedColor: '#52c41a',
       itemHoverColor: '#000000',
-      itemHoverBg: '#f0f7ff',
     },
     Card: {
       colorBgContainer: '#ffffff',

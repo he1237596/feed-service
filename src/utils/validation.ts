@@ -20,6 +20,7 @@ export const packageCreateSchema = Joi.object({
 });
 
 export const packageUpdateSchema = Joi.object({
+  name: Joi.string().pattern(/^[a-z0-9][a-z0-9._-]*[a-z0-9]$/i).min(1).max(50).optional(),
   description: Joi.string().max(500).optional(),
   isPublic: Joi.boolean().optional()
 });
@@ -73,6 +74,9 @@ export const packageVersionSchema = Joi.object({
   version: Joi.string().pattern(/^\d+\.\d+\.\d+(-.+)?$/).required()
 });
 
+// Schema for route parameters with packageName and version
+export const packageParamVersionSchema = packageVersionSchema;
+
 // Validation middleware factory
 export const validate = (schema: Joi.ObjectSchema) => {
   return (req: any, res: any, next: any) => {
@@ -113,6 +117,22 @@ export const validateParams = (schema: Joi.ObjectSchema) => {
       return res.status(400).json({
         success: false,
         error: 'Parameter validation error',
+        details: error.details.map(detail => detail.message)
+      });
+    }
+    req.params = value;
+    next();
+  };
+};
+
+// Multi params validation for routes with multiple path parameters
+export const validateMultipleParams = (schema: Joi.ObjectSchema) => {
+  return (req: any, res: any, next: any) => {
+    const { error, value } = schema.validate(req.params);
+    if (error) {
+      return res.status(400).json({
+        success: false,
+        error: 'Parameter validation error', 
         details: error.details.map(detail => detail.message)
       });
     }
