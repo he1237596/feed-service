@@ -26,6 +26,8 @@ npm run dev
 后端服务将在 `http://localhost:3000` 启动
 
 ### 1.2 启动前端管理界面
+
+#### 本地开发环境
 ```bash
 # 新开一个终端，进入web目录
 cd feed-service/web
@@ -35,6 +37,13 @@ npm install
 
 # 启动前端开发服务器
 npm run dev
+```
+
+#### Docker 环境
+```bash
+# 启动服务并初始化数据
+docker compose up -d
+docker compose exec feed-service node seed.js
 ```
 
 前端管理界面将在 `http://localhost:3002` 启动
@@ -74,7 +83,7 @@ yarn add piral-cli @pilet/pilet-api
     "feeds": [
       {
         "name": "local",
-        "url": "http://localhost:3000/api/feed"
+        "url": "http://localhost:3000/api/feed/pilets"
       },
       {
         "name": "official",
@@ -94,7 +103,7 @@ import { createInstance } from 'piral';
 const app = createInstance({
   requestPilets() {
     return Promise.all([
-      fetch('http://localhost:3000/api/feed')
+      fetch('http://localhost:3000/api/feed/pilets')
         .then(res => res.json())
         .then(data => data.items || []),
     ]);
@@ -115,7 +124,7 @@ cd your-pilet
 npm start
 
 # 或者使用调试模式连接到本地Feed Service
-npm start --debug --feed=http://localhost:3000/api/feed
+npm start --debug --feed=http://localhost:3000/api/feed/pilets
 ```
 
 ### 3.2 构建和发布Pilet

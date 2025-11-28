@@ -70,6 +70,7 @@ npm start
 
 ### 数据库初始化
 
+#### 本地开发
 ```bash
 # 运行数据库迁移
 npm run migrate
@@ -77,6 +78,19 @@ npm run migrate
 # 填充种子数据
 npm run seed
 ```
+
+#### Docker 环境
+```bash
+# 启动容器
+docker compose up -d
+
+# 运行种子数据（自动创建管理员账户和示例包）
+docker compose exec feed-service node seed.js
+```
+
+管理员账户：
+- 邮箱：`admin@piral-feed-service.com`
+- 密码：`admin123456`
 
 ## API 文档
 
@@ -128,8 +142,14 @@ npm run seed
 #### GET /api/feed
 获取 Feed 服务信息
 
+#### GET /api/feed/pilets
+获取 Piral CLI 兼容的 Feed 信息
+
 #### GET /api/feed/:name
 获取特定包的 Feed 信息
+
+#### GET /api/feed/:name/npm
+获取 NPM 兼容的包信息
 
 ## Docker 部署
 

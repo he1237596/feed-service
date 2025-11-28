@@ -27,10 +27,15 @@ npx pilet start --debug --feed=http://localhost:3000/api/feed/pilets
 ```
 
 ### 方案三：使用Web界面上传
-1. 访问管理界面：http://localhost:3002
-2. 登录：`admin@piral-feed-service.com` / `admin123456`
-3. 点击"包管理" → "上传新包"
-4. 填写包信息并上传.tgz文件
+1. 启动服务并初始化：
+   ```bash
+   docker compose up -d
+   docker compose exec feed-service node seed.js
+   ```
+2. 访问管理界面：http://localhost:3002
+3. 登录：`admin@piral-feed-service.com` / `admin123456`
+4. 点击"包管理" → "上传新包"
+5. 填写包信息并上传.tgz文件
 
 ## 🔧 后端修复内容
 

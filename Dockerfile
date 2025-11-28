@@ -38,6 +38,9 @@ COPY --from=builder --chown=nodejs:nodejs /app/dist ./dist
 COPY --from=builder --chown=nodejs:nodejs /app/node_modules ./node_modules
 COPY --from=builder --chown=nodejs:nodejs /app/package*.json ./
 
+# Copy seed script from host
+COPY seed.js ./seed.js
+
 # Create required directories
 RUN mkdir -p /app/data /app/storage /app/logs \
     && chown -R nodejs:nodejs /app

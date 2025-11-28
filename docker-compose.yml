@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # Piral Feed Service
   feed-service:

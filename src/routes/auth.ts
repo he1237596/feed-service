@@ -4,7 +4,7 @@ import { UserModel } from '../database/models/User';
 import { validate, userRegistrationSchema, userLoginSchema } from '../utils/validation';
 import { authRateLimiter } from '../middleware/rateLimiter';
 import { asyncHandler, AppError } from '../middleware/errorHandler';
-import { authMiddleware, auth, authorize, generateToken, refreshToken, AuthenticatedRequest } from '../middleware/auth';
+import { auth, authorize, generateToken, refreshToken, AuthenticatedRequest } from '../middleware/auth';
 import { logger } from '../utils/logger';
 import { ApiResponse } from '../types';
 

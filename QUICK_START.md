@@ -85,13 +85,16 @@ npm start
 
 ```bash
 # 生产环境
-docker-compose up -d
+docker compose up -d
 
 # 开发环境
-docker-compose -f docker-compose.dev.yml up -d
+docker compose -f docker-compose.dev.yml up -d
 
 # 包含额外服务 (Nginx, Redis, 监控)
-docker-compose --profile with-nginx --profile monitoring up -d
+docker compose --profile with-nginx --profile monitoring up -d
+
+# 运行种子数据（创建管理员账户和示例包）
+docker compose exec feed-service node seed.js
 ```
 
 ### 单独使用 Docker

@@ -102,8 +102,19 @@ npm run dev:all
 
 ### 3. 访问界面
 - 后端API: http://localhost:3000
-- 前端界面: http://localhost:3001
+- 前端界面: http://localhost:3002
 - 登录账户: admin@piral-feed-service.com / admin123456
+
+### 3.1 Docker 环境访问
+```bash
+# 启动服务并初始化数据
+docker compose up -d
+docker compose exec feed-service node seed.js
+
+# 访问管理界面
+# Web UI: http://localhost:3002
+# API: http://localhost:3000
+```
 
 ## 📋 页面路由结构
 

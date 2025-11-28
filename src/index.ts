@@ -8,7 +8,7 @@ import fs from 'fs';
 import dotenv from 'dotenv';
 
 import { errorHandler } from './middleware/errorHandler';
-import { authMiddleware, initAuth } from './middleware/auth';
+import { initAuth } from './middleware/auth';
 import { rateLimiter } from './middleware/rateLimiter';
 import { logger } from './utils/logger';
 import { Database } from './database/Database';
